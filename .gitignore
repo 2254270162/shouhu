@@ -1,0 +1,73 @@
+# ===== 鏋勫缓浜х墿 =====
+build/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+.cxx/
+.externalNativeBuild/
+
+# ===== Gradle =====
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+.gradletasknamecache
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# ===== 鏈湴宸ュ叿閾撅紙浣撶Н宸ㄥぇ锛屼笖涓庢満鍣ㄧ粦瀹氾級=====
+.toolchain/
+android-sdk/
+jdk/
+gradle-8.7/
+gradle-home/
+android-home/
+
+# ===== 鏈嶅姟绔繍琛屾椂鏁版嵁 =====
+# 閲岄潰鏈夌鐞嗗憳瀵嗙爜鍝堝笇銆佽澶囦护鐗屻€佺収鐗囥€佹棩蹇楋紝缁濅笉涓婁紶
+server/data/
+server/data-*/
+data/
+*.jsonl
+*.log
+
+# ===== 鎵撳寘浜х墿 =====
+dist/
+dist-final/
+dist-lan/
+*.exe
+*.sea-build/
+
+# ===== 鏈湴閰嶇疆锛堝惈瀵嗛挜锛?====
+local.properties
+keystore.properties
+*.keystore
+*.jks
+.env
+.env.*
+
+# ===== 涓存椂鏂囦欢 =====
+*.tmp
+*.tar
+*.tgz
+*.tar.gz
+*.zip
+~$*
+.DS_Store
+Thumbs.db
+
+# ===== 娴嬭瘯涓存椂鐩綍 =====
+.verify/
+.tmp/
+temp/
+
+# ===== 依赖（部署时 npm install 安装）=====
+node_modules/

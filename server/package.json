@@ -1,0 +1,30 @@
+{
+  "name": "guardian-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "设备守护服务端：设备配对、位置/照片上报、远程指令下发",
+  "main": "src/index.js",
+  "bin": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "build:exe": "pkg . --targets node18-win-x64 --output dist/guardian-server.exe --compress GZip"
+  },
+  "pkg": {
+    "assets": [
+      "public/**/*"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ],
+    "outputPath": "dist"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@yao-pkg/pkg": "^6.6.0",
+    "esbuild": "^0.28.2",
+    "postject": "^1.0.0-alpha.6"
+  }
+}

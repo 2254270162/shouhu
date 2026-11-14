@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  允许明文 HTTP。
+
+  为什么必须开：
+  局域网部署时服务端是 http://192.168.x.x:8080，没有 HTTPS。
+  Android 9+ 默认禁止明文流量，不开这个会直接抛
+  "Cleartext HTTP traffic not permitted"。
+
+  为什么用 base-config 而不是把内网 IP 列进来：
+  network-security-config 的 domain 只能精确匹配主机名或后缀，
+  无法表达 192.168.0.0/16 这样的网段。要覆盖任意内网 IP 只能整体放开。
+
+  风险控制：服务端部署在内网，且 App 只访问用户自己填写的一个地址；
+  如需收紧，可在打包时改成只允许特定 IP。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

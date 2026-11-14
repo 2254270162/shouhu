@@ -1,0 +1,2213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>设备管理后台</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --text: #1a1d21;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --brand: #4f46e5;
+    --brand-dark: #4338ca;
+    --ok: #16a34a;
+    --warn: #d97706;
+    --err: #dc2626;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  button, input { font: inherit; }
+  .hidden { display: none !important; }
+
+  /* 登录 / 初始化 */
+  .auth-wrap {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .auth-card {
+    width: 100%; max-width: 380px; background: var(--card); border-radius: 16px;
+    padding: 28px 24px; box-shadow: 0 8px 30px rgba(0,0,0,.07);
+  }
+  .auth-card h1 { margin: 0 0 6px; font-size: 22px; }
+  .auth-card .sub { margin: 0 0 22px; color: var(--muted); font-size: 13.5px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .field input {
+    width: 100%; padding: 11px 13px; border: 1px solid var(--line); border-radius: 10px;
+    background: #fbfbfd; outline: none; transition: border-color .15s, background .15s;
+  }
+  .field input:focus { border-color: var(--brand); background: #fff; }
+  .btn {
+    width: 100%; padding: 12px; border: 0; border-radius: 10px; background: var(--brand);
+    color: #fff; font-weight: 600; cursor: pointer; transition: background .15s;
+  }
+  .btn:hover { background: var(--brand-dark); }
+  .btn:disabled { opacity: .55; cursor: not-allowed; }
+  .btn-sm {
+    width: auto; padding: 7px 13px; font-size: 13.5px; border-radius: 8px; font-weight: 500;
+  }
+  .btn-ghost {
+    background: #fff; color: var(--text); border: 1px solid var(--line);
+  }
+  .btn-ghost:hover { background: #f3f4f6; }
+  .btn-danger { background: #fff; color: var(--err); border: 1px solid #fecaca; }
+  .btn-danger:hover { background: #fef2f2; }
+  .msg { margin-top: 14px; padding: 10px 12px; border-radius: 9px; font-size: 13.5px; }
+  .msg.err { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+  .msg.ok { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+
+  /* 顶栏 */
+  header {
+    position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,.92);
+    backdrop-filter: saturate(180%) blur(12px); border-bottom: 1px solid var(--line);
+  }
+  .bar {
+    max-width: 1080px; margin: 0 auto; padding: 12px 18px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .bar h1 { font-size: 17px; margin: 0; flex: 1; }
+  .who { font-size: 13px; color: var(--muted); }
+
+  main { max-width: 1080px; margin: 0 auto; padding: 18px; }
+
+  .stats { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .stat {
+    flex: 1; min-width: 96px; background: var(--card); border-radius: var(--radius);
+    padding: 13px 15px; border: 1px solid var(--line);
+  }
+  .stat .n { font-size: 22px; font-weight: 700; line-height: 1.2; }
+  .stat .l { font-size: 12.5px; color: var(--muted); }
+
+  .dev {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 16px; margin-bottom: 14px;
+  }
+  .dev-head { display: flex; align-items: center; gap: 9px; margin-bottom: 4px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #9ca3af; flex: 0 0 auto; }
+  .dot.on { background: var(--ok); box-shadow: 0 0 0 3px rgba(22,163,74,.15); }
+  .dev-name { font-weight: 600; font-size: 16px; }
+  .dev-meta { color: var(--muted); font-size: 13px; margin-left: 18px; margin-bottom: 12px; }
+
+  .kv { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13.5px; }
+  .kv .k { color: var(--muted); }
+  .kv .v { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .divider { height: 1px; background: var(--line); margin: 12px 0; }
+
+  .empty { text-align: center; padding: 48px 20px; color: var(--muted); }
+
+  /* 照片 */
+  .photo-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px; margin-top: 12px;
+  }
+  .thumb {
+    position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden;
+    background: #eef0f3; cursor: pointer; border: 1px solid var(--line);
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb .noimg {
+    display: flex; align-items: center; justify-content: center; height: 100%;
+    font-size: 12px; color: var(--muted); text-align: center; padding: 8px;
+  }
+
+  /* 遥测面板 */
+  .telemetry { margin-top: 12px; }
+  .tele-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 8px;
+  }
+  .tele-item {
+    background: #f8f9fb; border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px;
+  }
+  .tele-item .t { font-size: 11.5px; color: var(--muted); margin-bottom: 3px; }
+  .tele-item .v { font-size: 15px; font-weight: 600; font-family: ui-monospace, Menlo, monospace; }
+  .tele-item .s { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .tele-item.warn { background: #fffbeb; border-color: #fde68a; }
+  .tele-item.warn .v { color: var(--warn); }
+  .tele-item.bad { background: #fef2f2; border-color: #fecaca; }
+  .tele-item.bad .v { color: var(--err); }
+
+  /* 日志 */
+  .logs-panel { margin-top: 12px; }
+  .logs-toolbar {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;
+  }
+  .logs-toolbar select {
+    padding: 5px 9px; border-radius: 7px; border: 1px solid var(--line);
+    background: #fff; font-size: 13px;
+  }
+  .log-list {
+    max-height: 340px; overflow-y: auto; border: 1px solid var(--line);
+    border-radius: 9px; background: #fbfbfd;
+  }
+  .log-row {
+    display: flex; gap: 9px; padding: 6px 11px; font-size: 12.5px;
+    border-bottom: 1px solid #f0f1f4; align-items: baseline;
+  }
+  .log-row:last-child { border-bottom: 0; }
+  .log-row .lt { color: var(--muted); font-family: ui-monospace, Menlo, monospace; flex: 0 0 auto; }
+  .log-row .le {
+    flex: 0 0 auto; padding: 1px 6px; border-radius: 4px; font-size: 11px;
+    background: #eef0f3; color: #4b5563;
+  }
+  .log-row .lm { flex: 1; word-break: break-word; }
+  .log-row.warn .le { background: #fef3c7; color: #92400e; }
+  .log-row.error .le { background: #fee2e2; color: #991b1b; }
+  .log-row.error .lm { color: var(--err); }
+
+  /* 安装包分发 */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+  .card-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+  .card-title { font-weight: 600; font-size: 15px; }
+  .hint { font-size: 12.5px; color: var(--muted); }
+  .card-sub { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+  .apk-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .apk-list:empty::after { content: "还没有上传安装包"; font-size: 13px; color: var(--muted); }
+  .apk-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f8f9fb;
+             border: 1px solid var(--line); border-radius: 9px; margin-bottom: 8px; }
+  .apk-row .fname { flex: 1; font-weight: 500; word-break: break-all; font-size: 13.5px; }
+  .apk-row .fsize { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+  .install-box { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .install-label { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .addr { font-family: ui-monospace, Menlo, monospace; background: #f8f9fb; border: 1px solid var(--line);
+          border-radius: 8px; padding: 9px 11px; font-size: 13px; word-break: break-all; margin-bottom: 8px; }
+  .batch-codes { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .code-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-top: 8px; }
+  .code-item { font-family: ui-monospace, Menlo, monospace; font-size: 15px; font-weight: 600;
+               background: #f8f9fb; border: 1px solid var(--line); border-radius: 8px;
+               padding: 8px; text-align: center; letter-spacing: 1px; }
+
+  /* 运行配置 */
+  .cfg-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .cfg-label { font-size: 13px; color: var(--muted); flex: 0 0 76px; }
+  .cfg-select, .cfg-input {
+    padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff;
+    font-size: 13.5px; flex: 1; min-width: 180px;
+  }
+  .cfg-unit { font-size: 13px; color: var(--muted); }
+  .cfg-actions { margin-top: 4px; }
+  .cfg-note { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+  .cfg-divider { height: 1px; background: var(--line); margin: 16px 0 12px; }
+  .cfg-section-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+  .cfg-hint {
+    font-size: 12px; color: var(--muted); background: #f8f9fb;
+    border-radius: 8px; padding: 9px 11px; margin-top: 4px; line-height: 1.5;
+  }
+
+  /* 权限状态 */
+  .perm-box { margin-top: 10px; padding: 10px 12px; border-radius: 9px; font-size: 13px; }
+  .perm-ok { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+  .perm-bad { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .perm-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+  .perm-tag { font-size: 12px; padding: 2px 8px; border-radius: 5px; background: #fff; border: 1px solid #e5e7eb; }
+  .perm-tag.miss { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+  .perm-tag.special { border-style: dashed; }
+  .perm-actions { display: flex; gap: 8px; margin-top: 9px; flex-wrap: wrap; }
+
+  /* 剪贴板 */
+  .clip-box {
+    margin-top: 10px; padding: 12px 14px; border-radius: 10px;
+    background: #f8f9fb; border: 1px solid var(--line);
+  }
+  .clip-fail { background: #fef2f2; border-color: #fecaca; }
+  .clip-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .clip-tag {
+    font-size: 11px; font-weight: 500; padding: 1px 7px; border-radius: 4px;
+    background: #fef3c7; color: #92400e;
+  }
+  .clip-tag.live { background: #dcfce7; color: #166534; }
+  .clip-content {
+    background: #fff; border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; font-size: 13px; white-space: pre-wrap; word-break: break-word;
+    max-height: 180px; overflow-y: auto; font-family: ui-monospace, Menlo, monospace;
+  }
+  .clip-meta { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+  .clip-empty { font-size: 13px; color: var(--muted); }
+  .clip-reason { font-size: 12.5px; color: #991b1b; }
+  .clip-hint { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+  .clip-sub { font-size: 12px; color: var(--muted); margin: 12px 0 6px; }
+  .clip-list { display: flex; flex-direction: column; gap: 5px; }
+  .clip-item {
+    display: flex; align-items: center; gap: 8px; background: #fff;
+    border: 1px solid var(--line); border-radius: 7px; padding: 6px 9px;
+  }
+  .clip-idx { font-size: 11px; color: var(--muted); flex: 0 0 auto; min-width: 14px; }
+  .clip-text { flex: 1; font-size: 12.5px; word-break: break-all; font-family: ui-monospace, Menlo, monospace; }
+  .clip-copy {
+    flex: 0 0 auto; font-size: 11.5px; padding: 2px 8px; border-radius: 5px;
+    border: 1px solid var(--line); background: #fff; cursor: pointer; color: var(--text);
+  }
+
+  /* 品牌定制 */
+  .brand-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .brand-hint {
+    font-size: 12px; color: var(--muted); background: #f8f9fb;
+    border-radius: 8px; padding: 9px 11px; margin: 4px 0 12px; line-height: 1.5;
+  }
+  .brand-icon-preview {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+  }
+  .brand-icon-preview img {
+    width: 64px; height: 64px; border-radius: 14px; border: 1px solid var(--line);
+    object-fit: cover; background: #f8f9fb;
+  }
+  .brand-icon-preview .icon-meta { font-size: 12.5px; color: var(--muted); }
+  .brand-actions { margin-top: 6px; }
+
+  /* 预置注册 */
+  .enroll-status {
+    padding: 10px 12px; border-radius: 9px; font-size: 13px; margin-bottom: 12px;
+  }
+  .enroll-on { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+  .enroll-off { background: #f8f9fb; border: 1px solid var(--line); color: var(--muted); }
+
+  .dev-group-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  }
+
+  /* 分组 */
+  .group-bar {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px;
+  }
+  .group-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px;
+    border-radius: 16px; border: 1px solid var(--line); background: #fff;
+    font-size: 13px; cursor: pointer; transition: all .15s;
+  }
+  .group-chip:hover { background: #f8f9fb; }
+  .group-chip.active { border-color: var(--brand); background: #f5f4ff; font-weight: 600; }
+  .group-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+  .group-count { font-size: 11.5px; color: var(--muted); }
+  .group-tag {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px;
+    padding: 1px 7px; border-radius: 4px; background: #f1f5f9; color: #475569;
+    margin-left: 6px;
+  }
+  .group-actions { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .group-select {
+    padding: 5px 9px; border-radius: 7px; border: 1px solid var(--line);
+    background: #fff; font-size: 12.5px;
+  }
+
+  /* 标签页 */
+  .tabs {
+    display: flex; gap: 4px; margin-bottom: 16px; background: #fff;
+    border: 1px solid var(--line); border-radius: 11px; padding: 4px;
+  }
+  .tab {
+    flex: 1; padding: 9px 12px; border: 0; background: transparent; border-radius: 8px;
+    font-size: 14px; color: var(--muted); cursor: pointer; font-weight: 500;
+    transition: background .15s, color .15s;
+  }
+  .tab:hover { background: #f3f4f6; }
+  .tab.active { background: var(--brand); color: #fff; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* 编译项 */
+  .build-item {
+    display: flex; align-items: center; gap: 14px; padding: 13px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .build-item:last-of-type { border-bottom: 0; }
+  .build-info { flex: 1; }
+  .build-name { font-weight: 600; font-size: 14.5px; }
+  .build-desc { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+  /* 编译确认弹窗 */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 150;
+    display: flex; align-items: center; justify-content: center; padding: 18px;
+  }
+  .modal {
+    background: #fff; border-radius: 14px; padding: 22px; width: 100%; max-width: 420px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.22); max-height: 90vh; overflow-y: auto;
+  }
+  .modal h3 { margin: 0 0 6px; font-size: 17px; }
+  .modal-sub { margin: 0 0 16px; font-size: 13px; color: var(--muted); }
+  .modal-option {
+    display: flex; gap: 11px; align-items: flex-start; padding: 13px;
+    border: 1.5px solid var(--line); border-radius: 11px; margin-bottom: 9px;
+    cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .modal-option:hover { background: #fafbfc; }
+  .modal-option.selected { border-color: var(--brand); background: #f5f4ff; }
+  .modal-option input { margin-top: 3px; accent-color: var(--brand); flex: 0 0 auto; }
+  .opt-body { display: flex; flex-direction: column; gap: 3px; }
+  .opt-name { font-weight: 600; font-size: 14.5px; }
+  .opt-desc { font-size: 12.5px; color: var(--muted); }
+  .modal-note {
+    background: #f8f9fb; border-radius: 9px; padding: 10px 12px;
+    font-size: 12.5px; color: var(--muted); margin: 14px 0 16px;
+  }
+  .modal-actions { display: flex; gap: 9px; justify-content: flex-end; }
+  .modal-actions .btn { width: auto; min-width: 88px; }
+
+  /* 权限勾选 */
+  .perm-picker { margin-bottom: 14px; }
+  .perm-pick-row {
+    display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px;
+    border: 1.5px solid var(--line); border-radius: 10px; margin-bottom: 8px;
+    cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .perm-pick-row:hover { background: #fafbfc; }
+  .perm-pick-row.checked { border-color: var(--brand); background: #f5f4ff; }
+  .perm-pick-row input { margin-top: 3px; accent-color: var(--brand); flex: 0 0 auto; }
+  .pick-body { display: flex; flex-direction: column; gap: 2px; }
+  .pick-name { font-weight: 600; font-size: 14px; }
+  .pick-special {
+    font-size: 11px; font-weight: 500; padding: 1px 6px; border-radius: 4px;
+    background: #fef3c7; color: #92400e; margin-left: 4px;
+  }
+  .pick-desc { font-size: 12.5px; color: var(--muted); }
+
+  /* 构建进度 */
+  .build-progress { margin: 10px 0; padding: 11px 13px; border-radius: 9px; font-size: 13px; }
+  .build-progress.running { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .build-progress.ok { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+  .build-progress.fail { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+  .build-log {
+    margin-top: 8px; max-height: 180px; overflow: auto; background: #fff; border: 1px solid var(--line);
+    border-radius: 7px; padding: 9px; font-family: ui-monospace, Menlo, monospace;
+    font-size: 11.5px; white-space: pre-wrap; color: #4b5563;
+  }
+  .thumb .tag {
+    position: absolute; left: 6px; top: 6px; font-size: 11px; padding: 2px 6px;
+    border-radius: 5px; background: rgba(0,0,0,.62); color: #fff;
+  }
+
+  /* 大图 */
+  .lightbox {
+    position: fixed; inset: 0; background: rgba(0,0,0,.9); z-index: 100;
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+  }
+  .lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+  .lightbox .close {
+    position: absolute; top: 14px; right: 16px; width: 40px; height: 40px;
+    border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; border: 0;
+    font-size: 22px; cursor: pointer; line-height: 1;
+  }
+
+  /* 提示条 */
+  #toast {
+    position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%);
+    background: #111827; color: #fff; padding: 10px 18px; border-radius: 10px;
+    font-size: 13.5px; opacity: 0; pointer-events: none; transition: opacity .22s;
+    max-width: 86vw; text-align: center; z-index: 200;
+  }
+  #toast.show { opacity: 1; }
+  #toast.err { background: #b91c1c; }
+
+  .spin {
+    width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.4);
+    border-top-color: #fff; border-radius: 50%; display: inline-block;
+    animation: sp .7s linear infinite; vertical-align: -2px; margin-right: 6px;
+  }
+  @keyframes sp { to { transform: rotate(360deg); } }
+
+  @media (max-width: 520px) {
+    main { padding: 14px; }
+    .bar { padding: 10px 14px; }
+    .bar h1 { font-size: 16px; }
+    .who { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 登录 / 初始化 -->
+<div id="authView" class="auth-wrap hidden">
+  <div class="auth-card">
+    <h1 id="authTitle">管理员登录</h1>
+    <p class="sub" id="authSub">输入管理员账号访问设备管理后台</p>
+
+    <div class="field">
+      <label for="u">用户名</label>
+      <input id="u" autocomplete="username" placeholder="admin">
+    </div>
+    <div class="field">
+      <label for="p">密码</label>
+      <input id="p" type="password" autocomplete="current-password" placeholder="至少 10 位">
+    </div>
+    <div class="field hidden" id="p2Field">
+      <label for="p2">确认密码</label>
+      <input id="p2" type="password" autocomplete="new-password" placeholder="再输入一次">
+    </div>
+
+    <button class="btn" id="authBtn">登录</button>
+    <div id="authMsg" class="msg hidden"></div>
+  </div>
+</div>
+
+<!-- 主界面 -->
+<div id="appView" class="hidden">
+  <header>
+    <div class="bar">
+      <h1>设备管理后台</h1>
+      <span class="who" id="who"></span>
+      <button class="btn btn-sm btn-ghost" id="refreshBtn">刷新</button>
+      <button class="btn btn-sm btn-danger" id="logoutBtn">退出</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- 标签切换 -->
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="devices" role="tab">设备</button>
+      <button class="tab" data-tab="build" role="tab">安装包与编译</button>
+      <button class="tab" data-tab="config" role="tab">运行配置</button>
+    </nav>
+
+    <!-- 设备页 -->
+    <section class="tab-panel active" id="panel-devices">
+      <div class="stats">
+        <div class="stat"><div class="n" id="stTotal">0</div><div class="l">设备总数</div></div>
+        <div class="stat"><div class="n" id="stOnline">0</div><div class="l">在线</div></div>
+        <div class="stat"><div class="n" id="stPhotos">0</div><div class="l">照片总数</div></div>
+      </div>
+
+      <!-- 分组筛选 -->
+      <div class="group-bar" id="groupBar"></div>
+      <div class="group-actions">
+        <button class="btn btn-sm btn-ghost" id="groupAdd">新建分组</button>
+      </div>
+
+      <div id="deviceList"></div>
+    </section>
+
+    <!-- 安装包与编译页 -->
+    <section class="tab-panel" id="panel-build">
+      <!-- 编译：两个模块各自独立成卡，按钮在卡片内部 -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">编译安装包</span>
+          <span class="hint">在服务器上直接构建，产物自动进入下方列表</span>
+        </div>
+
+        <div class="build-item">
+          <div class="build-info">
+            <div class="build-name">被监控端</div>
+            <div class="build-desc">装在 PDA 上的 App，负责上报位置、状态、响应远程指令</div>
+          </div>
+          <button class="btn btn-sm" id="buildDevice">编译</button>
+        </div>
+
+        <div class="build-item">
+          <div class="build-info">
+            <div class="build-name">监控端</div>
+            <div class="build-desc">你自己用的 App，查看设备、下发指令</div>
+          </div>
+          <button class="btn btn-sm btn-ghost" id="buildMonitor">编译</button>
+        </div>
+
+        <div id="buildProgress" class="build-progress hidden"></div>
+      </div>
+
+      <!-- 构建环境 -->
+      <div class="card" id="envCard">
+        <div class="card-head">
+          <span class="card-title">构建环境</span>
+          <span class="hint">编译 APK 需要，首次使用装一次</span>
+        </div>
+        <div id="envStatus" class="enroll-status enroll-off">检测中…</div>
+        <div id="envProgress" class="build-progress hidden"></div>
+        <div class="cfg-actions">
+          <button class="btn btn-sm" id="envInstall">一键安装</button>
+          <button class="btn btn-sm btn-ghost" id="envRefresh">刷新状态</button>
+        </div>
+        <div class="cfg-hint">
+          JDK、Gradle、Android SDK 与依赖缓存已打包在本程序内，
+          点击后直接释放到磁盘，<b>不需要联网</b>。约 2.3GB，需要几分钟。
+        </div>
+      </div>
+
+      <!-- 预置注册 -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">预置注册</span>
+          <span class="hint">让 APK 装完自动注册，不用逐台填配对码</span>
+        </div>
+        <p class="card-sub">
+          开启后，编译时把服务器地址和组密钥写进 APK。设备装完打开就自动注册并开始守护，
+          几十台 PDA 不用一台台配。
+        </p>
+
+        <div class="enroll-status" id="enrollStatus"></div>
+
+        <div class="cfg-row">
+          <label class="cfg-label">组密钥</label>
+          <input id="enrollKey" type="text" class="cfg-input" placeholder="至少 16 位，点右侧生成">
+          <button class="btn btn-sm btn-ghost" id="enrollGen">生成</button>
+        </div>
+        <div class="cfg-row">
+          <label class="cfg-label">服务器地址</label>
+          <input id="enrollServer" type="text" class="cfg-input" placeholder="留空则用当前访问地址">
+        </div>
+        <div class="cfg-row">
+          <label class="cfg-label">注册上限</label>
+          <input id="enrollMax" type="number" min="0" max="10000" class="cfg-input" value="0">
+          <span class="cfg-unit">台（0 表示不限）</span>
+        </div>
+        <div class="cfg-row">
+          <label class="cfg-label">自动归组</label>
+          <select id="enrollGroup" class="cfg-select">
+            <option value="">不分组</option>
+          </select>
+        </div>
+
+        <div class="cfg-actions">
+          <button class="btn btn-sm" id="enrollSave">保存并启用</button>
+          <button class="btn btn-sm btn-ghost" id="enrollDisable">停用</button>
+        </div>
+
+        <div class="cfg-hint">
+          <b>安全提醒：</b>组密钥会写进 APK，拿到安装包的人都能注册设备。
+          建议设置注册上限，并在交付完成后停用或轮换密钥。
+        </div>
+      </div>
+
+      <!-- 品牌定制 -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">品牌定制</span>
+          <span class="hint">只影响被监控端；不填则用默认</span>
+        </div>
+        <p class="card-sub">
+          改应用名称、图标、包名，交付给不同客户时不用维护多份工程。
+        </p>
+
+        <div class="brand-row">
+          <label class="cfg-label">应用名称</label>
+          <input id="brandAppName" type="text" class="cfg-input" placeholder="定位助手">
+        </div>
+        <div class="brand-row">
+          <label class="cfg-label">包名</label>
+          <input id="brandPackage" type="text" class="cfg-input" placeholder="com.example.locateme">
+        </div>
+        <div class="brand-hint">
+          包名决定安装时是否覆盖：<b>相同包名会覆盖旧版本</b>，不同包名可以共存。
+          改包名后设备需要重新配对。
+        </div>
+
+        <div class="brand-row">
+          <label class="cfg-label">应用图标</label>
+          <label class="btn btn-sm btn-ghost" for="brandIcon">上传图标</label>
+          <input type="file" id="brandIcon" accept="image/png,image/jpeg,image/webp" hidden>
+          <button class="btn btn-sm btn-danger" id="brandIconClear">清除</button>
+        </div>
+        <div id="brandIconPreview" class="brand-icon-preview"></div>
+
+        <div class="brand-actions">
+          <button class="btn btn-sm" id="buildBranded">用此配置编译</button>
+        </div>
+      </div>
+
+      <!-- 已构建/上传的安装包 -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">安装包列表</span>
+          <span class="hint" id="apkHost"></span>
+        </div>
+        <p class="card-sub">
+          PDA 用浏览器打开下面的安装页即可下载，不用逐台连电脑。
+        </p>
+
+        <div class="apk-actions">
+          <label class="btn btn-sm btn-ghost" for="apkFile">上传自定义 APK</label>
+          <input type="file" id="apkFile" accept=".apk,application/vnd.android.package-archive" hidden>
+        </div>
+
+        <div id="apkList" class="apk-list"></div>
+
+        <div class="install-box">
+          <div class="install-label">安装页地址（PDA 浏览器打开）</div>
+          <div class="addr" id="installUrl">—</div>
+          <button class="btn btn-sm btn-ghost" id="copyInstall">复制地址</button>
+        </div>
+      </div>
+
+      <!-- 配对码 -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">批量配对码</span>
+          <span class="hint">一次生成一批，每码只能用一次</span>
+        </div>
+        <button class="btn btn-sm btn-ghost" id="apkPairBtn">生成配对码</button>
+        <div id="batchCodes" class="batch-codes hidden"></div>
+      </div>
+    </section>
+
+    <!-- 运行配置页 -->
+    <section class="tab-panel" id="panel-config">
+      <div class="card" id="cfgCard">
+        <div class="card-head">
+          <span class="card-title">运行配置</span>
+          <span class="hint">改完对在线设备立即生效，离线设备下次上线生效</span>
+        </div>
+        <div class="cfg-row">
+          <label class="cfg-label">后台模式</label>
+          <select id="cfgMode" class="cfg-select">
+            <option value="hybrid">hybrid — 前台服务，通知静默（推荐）</option>
+            <option value="foreground">foreground — 前台服务 + 常驻通知（最稳）</option>
+            <option value="background">background — 无通知栏图标（可能被系统回收）</option>
+          </select>
+        </div>
+        <div class="cfg-row">
+          <label class="cfg-label">上报间隔</label>
+          <input id="cfgInterval" type="number" min="30" max="86400" class="cfg-input" value="300">
+          <span class="cfg-unit">秒</span>
+        </div>
+
+        <div class="cfg-divider"></div>
+        <div class="cfg-section-title">设备端界面</div>
+
+        <div class="cfg-row">
+          <label class="cfg-label">操作页地址</label>
+          <input id="cfgOperationUrl" type="text" class="cfg-input" placeholder="https://wms.example.com（留空则显示内置页）">
+        </div>
+        <div class="cfg-row">
+          <label class="cfg-label">管理口令</label>
+          <input id="cfgAdminPassword" type="text" class="cfg-input" placeholder="留空则用默认口令 8888">
+        </div>
+        <div class="cfg-hint">
+          设备管理页只能由后台在设备详情里点「打开管理页」触发，
+          设备切到管理页后需要在该设备上输入此口令。
+        </div>
+        <div class="cfg-actions">
+          <button class="btn btn-sm" id="cfgSave">应用到所有设备</button>
+        </div>
+        <div class="cfg-note" id="cfgNote"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+  let initialized = false;
+
+  // ---------- 通用请求 ----------
+  async function api(path, opts = {}) {
+    const res = await fetch(path, {
+      credentials: "same-origin",
+      headers: opts.body ? { "Content-Type": "application/json" } : {},
+      ...opts,
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    });
+    let data = null;
+    try { data = await res.json(); } catch { /* 非 JSON */ }
+    if (res.status === 401 && !path.includes("/admin/login")) {
+      showAuth();
+      throw new Error("登录已失效，请重新登录");
+    }
+    if (!res.ok || (data && data.ok === false)) {
+      throw new Error((data && (data.message || data.error)) || `请求失败 (${res.status})`);
+    }
+    return data || {};
+  }
+
+  let toastTimer;
+  function toast(msg, isErr) {
+    const el = $("toast");
+    el.textContent = msg;
+    el.className = "show" + (isErr ? " err" : "");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.className = ""; }, 2600);
+  }
+
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  function fmtTime(ms) {
+    if (!ms) return "—";
+    const d = new Date(ms);
+    const p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  }
+
+  // ---------- 登录视图 ----------
+  function showAuth() {
+    $("appView").classList.add("hidden");
+    $("authView").classList.remove("hidden");
+  }
+
+  function showApp(username) {
+    $("authView").classList.add("hidden");
+    $("appView").classList.remove("hidden");
+    $("who").textContent = username || "";
+    // 恢复到上次停留的标签页
+    let initialTab = "devices";
+    try {
+      initialTab = sessionStorage.getItem("adminTab") || "devices";
+    } catch {
+      /* 忽略 */
+    }
+    switchTab(initialTab);
+  }
+
+  async function checkStatus() {
+    try {
+      const s = await api("/api/admin/status");
+      initialized = !!s.initialized;
+    } catch {
+      initialized = true; // 拿不到就按已有管理员处理，让用户走登录
+    }
+
+    if (initialized) {
+      $("authTitle").textContent = "管理员登录";
+      $("authSub").textContent = "输入管理员账号访问设备管理后台";
+      $("p2Field").classList.add("hidden");
+      $("authBtn").textContent = "登录";
+      $("p").setAttribute("autocomplete", "current-password");
+    } else {
+      $("authTitle").textContent = "创建管理员";
+      $("authSub").textContent = "首次使用，请设置管理员账号。这个账号拥有全部设备的访问权限。";
+      $("p2Field").classList.remove("hidden");
+      $("authBtn").textContent = "创建并进入";
+      $("p").setAttribute("autocomplete", "new-password");
+    }
+    showAuth();
+
+    // 已登录则直接进入
+    try {
+      const me = await api("/api/admin/me");
+      if (me && me.username) showApp(me.username);
+    } catch { /* 未登录，停留在登录页 */ }
+  }
+
+  async function submitAuth() {
+    const username = $("u").value.trim();
+    const password = $("p").value;
+    const msg = $("authMsg");
+    msg.className = "msg hidden";
+
+    if (!username || !password) {
+      msg.textContent = "请填写用户名和密码";
+      msg.className = "msg err";
+      return;
+    }
+    if (!initialized && password !== $("p2").value) {
+      msg.textContent = "两次输入的密码不一致";
+      msg.className = "msg err";
+      return;
+    }
+
+    const btn = $("authBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin"></span>处理中';
+    try {
+      if (initialized) {
+        await api("/api/admin/login", { method: "POST", body: { username, password } });
+      } else {
+        await api("/api/admin/setup", { method: "POST", body: { username, password } });
+        initialized = true;
+      }
+      $("p").value = "";
+      if ($("p2")) $("p2").value = "";
+      showApp(username);
+      toast(initialized ? "已登录" : "管理员创建成功");
+    } catch (e) {
+      msg.textContent = e.message;
+      msg.className = "msg err";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = initialized ? "登录" : "创建并进入";
+    }
+  }
+
+  // ---------- 设备列表 ----------
+  let devices = [];
+
+  async function loadDevices() {
+    try {
+      let path = "/api/admin/devices";
+      if (currentGroupFilter) path += `?groupId=${encodeURIComponent(currentGroupFilter)}`;
+      const data = await api(path);
+      devices = data.devices || [];
+      const st = data.stats || {};
+      $("stTotal").textContent = st.total ?? devices.length;
+      $("stOnline").textContent = st.online ?? 0;
+      $("stPhotos").textContent = st.photos ?? 0;
+      renderDevices();
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  function renderDevices() {
+    const box = $("deviceList");
+    if (!devices.length) {
+      box.innerHTML = '<div class="empty">还没有设备<br><br>在被监控端 App 的「设备守护」页完成配对后，这里会出现。</div>';
+      return;
+    }
+    box.innerHTML = devices.map(devCard).join("");
+  }
+
+  function devCard(d) {
+    const loc = d.lastLocation;
+    const locHtml = loc
+      ? `
+        <div class="kv"><span class="k">纬度</span><span class="v">${Number(loc.latitude).toFixed(6)}</span></div>
+        <div class="kv"><span class="k">经度</span><span class="v">${Number(loc.longitude).toFixed(6)}</span></div>
+        <div class="kv"><span class="k">精度</span><span class="v">${loc.accuracy != null ? "±" + Math.round(loc.accuracy) + " 米" : "未知"}</span></div>
+        <div class="kv"><span class="k">定位时间</span><span class="v">${fmtTime(loc.timestamp || loc.updatedAt)}</span></div>
+        ${loc.isApproximate ? '<div class="kv"><span class="k" style="color:var(--warn)">注意</span><span class="v" style="color:var(--warn)">坐标来自大致位置授权</span></div>' : ""}
+      `
+      : '<div class="kv"><span class="k">位置</span><span class="v">还没有数据，点「定位」获取</span></div>';
+
+    return `
+      <div class="dev" data-id="${esc(d.id)}">
+        <div class="dev-head">
+          <span class="dot ${d.online ? "on" : ""}"></span>
+          <span class="dev-name">${esc(d.name)}</span>
+          ${d.group ? `<span class="group-tag"><span class="group-dot" style="background:${esc(d.group.color)}"></span>${esc(d.group.name)}</span>` : ""}
+          <span style="margin-left:auto;font-size:12.5px;color:${d.online ? "var(--ok)" : "var(--muted)"}">${d.online ? "在线" : "离线"}</span>
+        </div>
+        <div class="dev-meta">
+          ${esc(d.model || "未知机型")} · ${esc(d.appVersion || "版本未知")} · 照片 ${d.photoCount} 张
+          <br>最后活跃：${fmtTime(d.lastSeenAt)}
+        </div>
+        <div class="divider"></div>
+        <div class="dev-group-row">
+          <span style="font-size:12.5px;color:var(--muted)">分组</span>
+          ${groupSelectHtml(d)}
+        </div>
+        ${locHtml}
+        ${telemetryHtml(d.lastTelemetry)}
+        ${permissionsHtml(d)}
+        <div class="clip-panel" data-clip="${esc(d.id)}"></div>
+        <div class="acts">
+          <button class="btn btn-sm" data-act="locate">定位</button>
+          <button class="btn btn-sm btn-ghost" data-act="telemetry" ${!d.online ? "disabled" : ""}>刷新状态</button>
+          <button class="btn btn-sm btn-ghost" data-act="capture-back" ${!d.online ? "disabled" : ""}>后置拍照</button>
+          <button class="btn btn-sm btn-ghost" data-act="capture-front" ${!d.online ? "disabled" : ""}>前置拍照</button>
+          <button class="btn btn-sm btn-ghost" data-act="sync-album" ${!d.online ? "disabled" : ""}>同步相册</button>
+          <button class="btn btn-sm btn-ghost" data-act="photos">查看照片</button>
+          <button class="btn btn-sm" data-act="openadmin" ${!d.online ? "disabled" : ""}>打开管理页</button>
+          <button class="btn btn-sm btn-ghost" data-act="clipboard" ${!d.online ? "disabled" : ""}>读取剪贴板</button>
+          <button class="btn btn-sm btn-ghost" data-act="logs">查看日志</button>
+          <button class="btn btn-sm btn-danger" data-act="delete">解绑</button>
+        </div>
+        <div class="photos" data-photos="${esc(d.id)}"></div>
+        <div class="logs-panel" data-logs="${esc(d.id)}"></div>
+      </div>
+    `;
+  }
+
+  /** 把字节数转成人类可读。 */
+  function fmtBytes(n) {
+    if (n == null || isNaN(n)) return "—";
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    let i = 0;
+    let v = Number(n);
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+    return `${v.toFixed(v >= 100 || i === 0 ? 0 : 1)} ${units[i]}`;
+  }
+
+  /** 有温度等阈值判断时给出告警色。 */
+  function telemetryHtml(t) {
+    if (!t) {
+      return `<div class="telemetry"><div style="font-size:13px;color:var(--muted)">运行状态还没有数据，点「刷新状态」拉取。</div></div>`;
+    }
+
+    const items = [];
+    const push = (title, value, sub, cls) =>
+      items.push(`<div class="tele-item ${cls || ""}"><div class="t">${title}</div><div class="v">${value}</div>${sub ? `<div class="s">${sub}</div>` : ""}</div>`);
+
+    // 电量
+    if (t.battery?.level != null) {
+      const lvl = t.battery.level;
+      push("电量", `${lvl}%`, null, lvl <= 15 ? "bad" : lvl <= 30 ? "warn" : "");
+    }
+
+    // 温度
+    if (t.battery?.temperatureC != null) {
+      const temp = t.battery.temperatureC;
+      push("电池温度", `${temp.toFixed(1)}°C`, null, temp >= 45 ? "bad" : temp >= 40 ? "warn" : "");
+    }
+
+    // 充电状态
+    if (t.battery) {
+      const map = { charging: "充电中", full: "已充满", discharging: "放电中", not_charging: "未充电", unknown: "未知" };
+      const plug = { ac: "充电器", usb: "USB", wireless: "无线", none: "" }[t.battery.pluggedType] || "";
+      push("充电状态", map[t.battery.status] || "未知", plug);
+    }
+
+    // 屏幕
+    if (t.screen) {
+      push("屏幕", t.screen.on ? "亮屏" : "息屏", t.screen.powerSaveMode ? "省电模式" : "");
+    }
+
+    // 内存
+    if (t.memory?.usedPercent != null) {
+      push("内存", `${t.memory.usedPercent}%`,
+        `${fmtBytes(t.memory.usedBytes)} / ${fmtBytes(t.memory.totalBytes)}`,
+        t.memory.usedPercent >= 90 ? "bad" : t.memory.usedPercent >= 75 ? "warn" : "");
+    }
+
+    // 存储
+    if (t.storage?.usedPercent != null) {
+      push("存储", `${t.storage.usedPercent}%`,
+        `剩余 ${fmtBytes(t.storage.availableBytes)}`,
+        t.storage.usedPercent >= 95 ? "bad" : t.storage.usedPercent >= 85 ? "warn" : "");
+    }
+
+    // 前台应用
+    if (t.foregroundApp) {
+      if (t.foregroundApp.available && t.foregroundApp.packageName) {
+        push("前台应用",
+          esc(t.foregroundApp.appLabel || t.foregroundApp.packageName),
+          esc(t.foregroundApp.packageName));
+      } else {
+        push("前台应用", "未授权", esc(t.foregroundApp.reason || "需要在设备上授予使用情况访问权限"), "warn");
+      }
+    }
+
+    if (!items.length) {
+      return `<div class="telemetry"><div style="font-size:13px;color:var(--muted)">没有可展示的状态数据。</div></div>`;
+    }
+
+    const updated = t.updatedAt ? `<div style="font-size:12px;color:var(--muted);margin-top:6px">更新于 ${fmtTime(t.updatedAt)}</div>` : "";
+    return `<div class="telemetry"><div class="tele-grid">${items.join("")}</div>${updated}</div>`;
+  }
+
+  // ---------- 指令 ----------
+  async function runCommand(btn, deviceId, path, body, okText) {
+    const old = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin"></span>' + old;
+    try {
+      const r = await api(`/api/admin/devices/${deviceId}${path}`, { method: "POST", body: body || {} });
+      if (r.ok === false) throw new Error(r.message || r.error || "设备未响应");
+      toast(okText || "指令已下发");
+      await loadDevices();
+      return r;
+    } catch (e) {
+      toast(e.message, true);
+      return null;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = old;
+    }
+  }
+
+  async function loadPhotos(deviceId, container) {
+    container.innerHTML = '<div style="padding:10px 0;color:var(--muted);font-size:13px">正在加载…</div>';
+    try {
+      const data = await api(`/api/admin/devices/${deviceId}/photos`);
+      const photos = data.photos || [];
+      if (!photos.length) {
+        container.innerHTML = '<div style="padding:10px 0;color:var(--muted);font-size:13px">还没有照片。点「后置拍照」「前置拍照」或「同步相册」。</div>';
+        return;
+      }
+      container.innerHTML = `
+        <div class="divider"></div>
+        <div style="font-size:13px;color:var(--muted)">共 ${photos.length} 张</div>
+        <div class="photo-grid">
+          ${photos.map((p) => {
+            const url = `/api/admin/devices/${encodeURIComponent(deviceId)}/photos/${encodeURIComponent(p.id)}`;
+            const isHeic = (p.mime || "").includes("heic");
+            if (isHeic) {
+              return `
+                <div class="thumb">
+                  <div class="noimg">HEIC 格式<br>浏览器可能无法预览</div>
+                  <span class="tag">${p.source === "camera" ? "拍照" : "相册"}</span>
+                </div>`;
+            }
+            return `
+              <div class="thumb" data-url="${url}">
+                <img loading="lazy" src="${url}" alt="" data-fallback>
+                <span class="tag">${p.source === "camera" ? "拍照" : "相册"}</span>
+              </div>`;
+          }).join("")}
+        </div>
+      `;
+      // 图片加载失败时换成占位文字（用事件监听而不是内联 onerror，避免引号转义问题）
+      container.querySelectorAll("img[data-fallback]").forEach((img) => {
+        img.addEventListener("error", () => {
+          const holder = document.createElement("div");
+          holder.className = "noimg";
+          holder.textContent = "加载失败";
+          img.replaceWith(holder);
+        });
+      });
+      // 点缩略图看大图
+      container.querySelectorAll(".thumb").forEach((t) => {
+        t.addEventListener("click", () => openLightbox(t.dataset.url));
+      });
+    } catch (e) {
+      container.innerHTML = `<div style="padding:10px 0;color:var(--err);font-size:13px">${esc(e.message)}</div>`;
+    }
+  }
+
+  function openLightbox(url) {
+    const el = document.createElement("div");
+    el.className = "lightbox";
+    el.innerHTML = `<button class="close" aria-label="关闭">×</button><img src="${url}" alt="">`;
+    el.addEventListener("click", (ev) => {
+      if (ev.target === el || ev.target.classList.contains("close")) el.remove();
+    });
+    document.body.appendChild(el);
+  }
+
+  // ---------- 安装包分发 ----------
+  async function loadApks() {
+    try {
+      const data = await api("/api/admin/apks");
+      const apks = data.apks || [];
+      const base = data.baseUrl || location.origin;
+
+      $("installUrl").textContent = base + "/install";
+      $("apkHost").textContent = "局域网地址：" + base;
+
+      const box = $("apkList");
+      if (!apks.length) {
+        box.innerHTML = "";
+        return;
+      }
+      box.innerHTML = apks
+        .map(
+          (a) => `
+        <div class="apk-row">
+          <span class="fname">${esc(a.name)}</span>
+          <span class="fsize">${(a.size / 1048576).toFixed(1)} MB</span>
+          <button class="btn btn-sm btn-ghost" data-copy="${esc(a.url)}">复制链接</button>
+          <button class="btn btn-sm btn-danger" data-delapk="${esc(a.name)}">删除</button>
+        </div>`,
+        )
+        .join("");
+
+      box.querySelectorAll("[data-copy]").forEach((b) => {
+        b.addEventListener("click", () => copyText(b.dataset.copy, "下载链接已复制"));
+      });
+      box.querySelectorAll("[data-delapk]").forEach((b) => {
+        b.addEventListener("click", async () => {
+          if (!confirm("删除这个安装包？已下载的设备不受影响。")) return;
+          try {
+            await api(`/api/admin/apks/${encodeURIComponent(b.dataset.delapk)}`, { method: "DELETE" });
+            toast("已删除");
+            loadApks();
+          } catch (e) {
+            toast(e.message, true);
+          }
+        });
+      });
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  async function uploadApk(file) {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".apk")) {
+      toast("请选择 .apk 文件", true);
+      return;
+    }
+    // 用 XHR 而不是 fetch，方便显示上传进度（APK 动辄几十 MB）
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `/api/admin/apks?name=${encodeURIComponent(file.name)}`);
+    xhr.setRequestHeader("Content-Type", "application/octet-stream");
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        toast(`上传中 ${pct}%`);
+      }
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        toast("上传完成");
+        loadApks();
+      } else {
+        let msg = `上传失败 (${xhr.status})`;
+        try {
+          msg = JSON.parse(xhr.responseText).message || msg;
+        } catch {
+          /* 忽略 */
+        }
+        toast(msg, true);
+      }
+    };
+    xhr.onerror = () => toast("上传失败，请检查网络", true);
+    xhr.send(file);
+  }
+
+  // ---------- 标签切换 ----------
+  function switchTab(name) {
+    document.querySelectorAll(".tab").forEach((t) => {
+      t.classList.toggle("active", t.dataset.tab === name);
+    });
+    document.querySelectorAll(".tab-panel").forEach((p) => {
+      p.classList.toggle("active", p.id === "panel-" + name);
+    });
+    // 记住当前页，刷新后回到同一处
+    try {
+      sessionStorage.setItem("adminTab", name);
+    } catch {
+      /* 隐私模式下可能不可用 */
+    }
+    // 切到对应页时按需加载数据
+    if (name === "devices") {
+      loadGroups();
+      loadDevices();
+    }
+    if (name === "build") {
+      loadApks();
+      resumeBuildIfAny();
+      loadBranding();
+      loadEnrollment();
+      loadBuildEnv();
+    }
+    if (name === "config") loadConfig();
+  }
+
+  // ---------- 服务端构建 ----------
+  let buildTimer = null;
+  /** 正在构建的模块，用于按钮防重复点击 */
+  let buildingModule = null;
+
+  /**
+   * 打开编译确认弹窗。
+   *
+   * 为什么不用原生 confirm()：
+   * 原生弹窗只有「确定/取消」，选错了必须关掉重来，也没法在弹窗里切换模块。
+   * 这里用自定义弹窗，模块做成可切换的选项，一次操作就能选对。
+   *
+   * @param moduleKey 预选中的模块（点哪个按钮就预选哪个，但不锁死）
+   */
+  function askBuild(moduleKey) {
+    if (buildingModule) {
+      toast(`正在编译${buildingModule === "monitor" ? "监控端" : "被监控端"}，请等待完成`, true);
+      return;
+    }
+    openBuildModal(moduleKey || "device");
+  }
+
+  /** 当前弹窗里选中的模块 */
+  let modalModule = "device";
+
+  function openBuildModal(initial) {
+    modalModule = initial;
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bmTitle">
+        <h3 id="bmTitle">编译安装包</h3>
+        <p class="modal-sub">选择要编译的模块。编译会占用服务器 CPU 约 10 秒～3 分钟。</p>
+
+        <label class="modal-option" data-mod="device">
+          <input type="radio" name="buildmod" value="device">
+          <span class="opt-body">
+            <span class="opt-name">被监控端</span>
+            <span class="opt-desc">装在 PDA 上的 App，上报位置、状态、响应远程指令</span>
+          </span>
+        </label>
+
+        <label class="modal-option" data-mod="monitor">
+          <input type="radio" name="buildmod" value="monitor">
+          <span class="opt-body">
+            <span class="opt-name">监控端</span>
+            <span class="opt-desc">你自己用的 App，查看设备、下发指令</span>
+          </span>
+        </label>
+
+        <div class="modal-note">
+          产物会自动加入「安装包列表」，PDA 刷新安装页即可下载。已有安装包不受影响。
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-sm btn-ghost" data-act="cancel">取消</button>
+          <button class="btn btn-sm" data-act="confirm">开始编译</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // 预选并同步高亮
+    const syncSelection = (mod) => {
+      modalModule = mod;
+      overlay.querySelectorAll(".modal-option").forEach((el) => {
+        const checked = el.dataset.mod === mod;
+        el.classList.toggle("selected", checked);
+        const radio = el.querySelector("input");
+        if (radio) radio.checked = checked;
+      });
+    };
+    syncSelection(initial);
+
+    // 点整行即可选中，不用精确点中小圆点
+    overlay.querySelectorAll(".modal-option").forEach((el) => {
+      el.addEventListener("click", () => syncSelection(el.dataset.mod));
+    });
+
+    const close = () => overlay.remove();
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) close();
+    });
+    overlay.querySelector('[data-act="cancel"]').addEventListener("click", close);
+    overlay.querySelector('[data-act="confirm"]').addEventListener("click", () => {
+      const mod = modalModule;
+      close();
+      startServerBuild(mod);
+    });
+
+    // Esc 关闭
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        close();
+        document.removeEventListener("keydown", onKey);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+  }
+
+  function setBuildButtons(enabled) {
+    ["buildDevice", "buildMonitor"].forEach((id) => {
+      const el = $(id);
+      if (el) el.disabled = !enabled;
+    });
+  }
+
+  async function startServerBuild(moduleKey) {
+    if (buildingModule) return;
+    buildingModule = moduleKey;
+    setBuildButtons(false);
+
+    const box = $("buildProgress");
+    box.className = "build-progress running";
+    box.textContent = "正在启动构建…";
+
+    try {
+      await api("/api/admin/build", { method: "POST", body: { module: moduleKey } });
+      pollBuild();
+    } catch (e) {
+      buildingModule = null;
+      setBuildButtons(true);
+      box.className = "build-progress fail";
+      box.textContent = e.message;
+    }
+  }
+
+  function pollBuild() {
+    clearTimeout(buildTimer);
+    buildTimer = setTimeout(async () => {
+      try {
+        const data = await api("/api/admin/build/status");
+        const st = data.status || {};
+        const box = $("buildProgress");
+        box.classList.remove("hidden");
+
+        if (st.running) {
+          const sec = Math.floor((Date.now() - st.startedAt) / 1000);
+          box.className = "build-progress running";
+          box.innerHTML = `正在编译 ${st.module === "monitor" ? "监控端" : "被监控端"}… ${sec}s
+            <div style="font-size:12px;margin-top:4px">首次构建需要下载依赖，约 3 分钟；后续会快很多</div>`;
+          pollBuild();
+          return;
+        }
+
+        buildingModule = null;
+        setBuildButtons(true);
+
+        if (st.ok === true && st.output) {
+          box.className = "build-progress ok";
+          box.innerHTML = `编译成功：${esc(st.output.name)}（${(st.output.size / 1048576).toFixed(1)} MB）<br>
+            <span style="font-size:12px">已自动加入下方安装包列表，PDA 刷新安装页即可下载</span>`;
+          loadApks();
+        } else if (st.ok === false) {
+          box.className = "build-progress fail";
+          box.innerHTML = `编译失败：${esc(st.error || "未知原因")}
+            ${st.log ? `<div class="build-log">${esc(st.log)}</div>` : ""}`;
+        }
+      } catch (e) {
+        buildingModule = null;
+        setBuildButtons(true);
+        $("buildProgress").className = "build-progress fail";
+        $("buildProgress").textContent = e.message;
+      }
+    }, 2500);
+  }
+
+  /** 页面加载时检查是否有构建正在进行，有则恢复进度显示并锁定按钮。 */
+  async function resumeBuildIfAny() {
+    try {
+      const data = await api("/api/admin/build/status");
+      const st = data.status || {};
+      if (st.running) {
+        buildingModule = st.module;
+        setBuildButtons(false);
+        pollBuild();
+      } else if (st.ok !== null && st.finishedAt && Date.now() - st.finishedAt < 10 * 60 * 1000) {
+        // 10 分钟内结束的构建，把结果也显示出来，避免刷新后看不到
+        const box = $("buildProgress");
+        box.classList.remove("hidden");
+        if (st.ok && st.output) {
+          box.className = "build-progress ok";
+          box.innerHTML = `上次编译成功：${esc(st.output.name)}（${(st.output.size / 1048576).toFixed(1)} MB）`;
+        } else if (st.ok === false) {
+          box.className = "build-progress fail";
+          box.innerHTML = `上次编译失败：${esc(st.error || "未知原因")}
+            ${st.log ? `<div class="build-log">${esc(st.log)}</div>` : ""}`;
+        }
+      }
+    } catch {
+      /* 拿不到状态不影响页面使用 */
+    }
+  }
+
+  // ---------- 权限请求弹窗 ----------
+  /** 权限元数据缓存 */
+  let permCatalog = null;
+
+  /**
+   * 打开权限请求弹窗：勾选要请求哪些权限。
+   *
+   * 为什么不在通知栏提醒：Android 禁止后台弹权限框，也不允许后台拉起界面。
+   * 所以这里的请求只是「登记」到服务端，等用户主动打开 App 时才弹系统权限框。
+   * 弹窗里把这一点讲清楚，避免管理员以为点一下就自动授权了。
+   */
+  async function openPermissionModal(device) {
+    // 拉取权限清单（只拉一次，之后复用）
+    if (!permCatalog) {
+      try {
+        const data = await api("/api/admin/permissions/catalog");
+        permCatalog = data.permissions || [];
+      } catch (e) {
+        toast(e.message, true);
+        return;
+      }
+    }
+
+    // 当前缺失的权限，默认勾选
+    const missingKeys = new Set(
+      (device.permissions?.items || []).filter((x) => !x.granted).map((x) => x.key),
+    );
+
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true">
+        <h3>请求权限</h3>
+        <p class="modal-sub">
+          勾选需要补充的权限。设备上的用户下次打开 App 时会自动弹出授权框。
+        </p>
+
+        <div class="perm-picker">
+          ${permCatalog
+            .map(
+              (p) => `
+            <label class="perm-pick-row" data-key="${esc(p.key)}">
+              <input type="checkbox" value="${esc(p.key)}" ${missingKeys.has(p.key) ? "checked" : ""}>
+              <span class="pick-body">
+                <span class="pick-name">${esc(p.label)}${p.special ? ' <span class="pick-special">需手动设置</span>' : ""}</span>
+                <span class="pick-desc">${esc(p.desc)}</span>
+              </span>
+            </label>`,
+            )
+            .join("")}
+        </div>
+
+        <div class="modal-note">
+          <strong>说明：</strong>Android 不允许后台直接弹权限框。这里提交后，
+          需要有人在设备上打开一次 App，授权框才会出现。通知栏不会打扰。
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-sm btn-ghost" data-act="cancel">取消</button>
+          <button class="btn btn-sm" data-act="confirm">提交请求</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // 点整行切换勾选
+    overlay.querySelectorAll(".perm-pick-row").forEach((row) => {
+      row.addEventListener("click", (e) => {
+        if (e.target.tagName === "INPUT") return;
+        const cb = row.querySelector("input");
+        cb.checked = !cb.checked;
+        row.classList.toggle("checked", cb.checked);
+      });
+      const cb = row.querySelector("input");
+      row.classList.toggle("checked", cb.checked);
+    });
+
+    const close = () => overlay.remove();
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) close();
+    });
+    overlay.querySelector('[data-act="cancel"]').addEventListener("click", close);
+    overlay.querySelector('[data-act="confirm"]').addEventListener("click", async () => {
+      const keys = [...overlay.querySelectorAll("input:checked")].map((i) => i.value);
+      if (keys.length === 0) {
+        toast("请至少勾选一项", true);
+        return;
+      }
+      try {
+        const r = await api(`/api/admin/devices/${device.id}/request-permissions`, {
+          method: "POST",
+          body: { keys },
+        });
+        close();
+        toast(r.message || "已登记，等用户打开 App 时授权");
+        loadDevices();
+      } catch (e) {
+        toast(e.message, true);
+      }
+    });
+  }
+
+  // ---------- 剪贴板 ----------
+  /** 读取设备剪贴板并渲染结果。 */
+  async function loadClipboard(deviceId, container, btn) {
+    const old = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin"></span>' + old;
+    container.innerHTML = "";
+
+    try {
+      const r = await api(`/api/admin/devices/${deviceId}/clipboard`, { method: "POST", body: {} });
+
+      if (!r.ok) {
+        container.innerHTML = `
+          <div class="clip-box clip-fail">
+            <div class="clip-title">读取失败</div>
+            <div class="clip-reason">${esc(r.error || r.message || "设备未响应")}</div>
+            ${r.hint ? `<div class="clip-hint">${esc(r.hint)}</div>` : ""}
+          </div>`;
+        return;
+      }
+
+      const fromHistory = r.fromHistory;
+      const main = r.text || (r.history && r.history[0]) || "";
+
+      const historyHtml = (r.history || []).length
+        ? `<div class="clip-sub">历史记录（${r.historyCount} 条）</div>
+           <div class="clip-list">
+             ${(r.history || []).map((t, i) => `
+               <div class="clip-item" title="点击复制">
+                 <span class="clip-idx">${i + 1}</span>
+                 <span class="clip-text">${esc(truncate(t, 120))}</span>
+                 <button class="clip-copy" data-copytext="${esc(t)}">复制</button>
+               </div>`).join("")}
+           </div>`
+        : "";
+
+      container.innerHTML = `
+        <div class="clip-box">
+          <div class="clip-title">
+            剪贴板内容
+            ${fromHistory ? '<span class="clip-tag">来自历史记录</span>' : '<span class="clip-tag live">实时读取</span>'}
+          </div>
+          ${main
+            ? `<div class="clip-content">${esc(main)}</div>
+               <div class="clip-meta">${main.length} 字符</div>`
+            : '<div class="clip-empty">剪贴板为空</div>'}
+          ${fromHistory ? '<div class="clip-hint">设备当前在后台，Android 不允许后台读剪贴板，这里显示的是最近一次在前台时的内容。</div>' : ""}
+          ${historyHtml}
+        </div>`;
+
+      // 绑定复制按钮
+      container.querySelectorAll("[data-copytext]").forEach((b) => {
+        b.addEventListener("click", () => copyText(b.dataset.copytext, "已复制"));
+      });
+    } catch (e) {
+      container.innerHTML = `<div class="clip-box clip-fail"><div class="clip-title">读取失败</div><div class="clip-reason">${esc(e.message)}</div></div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = old;
+    }
+  }
+
+  /** 截断长文本用于列表展示。 */
+  function truncate(s, n) {
+    const t = String(s || "");
+    return t.length <= n ? t : t.slice(0, n) + "…";
+  }
+
+  // ---------- 品牌定制 ----------
+  async function loadBranding() {
+    try {
+      const data = await api("/api/admin/branding");
+      const b = data.branding || {};
+      const d = data.defaults || {};
+      if (!$("brandAppName").value) $("brandAppName").placeholder = d.appName || "定位助手";
+      if (!$("brandPackage").value) $("brandPackage").placeholder = d.packageName || "";
+
+      const box = $("brandIconPreview");
+      if (b.hasCustomIcon) {
+        box.innerHTML = `
+          <img src="/api/admin/branding/icon?t=${Date.now()}" alt="图标">
+          <span class="icon-meta">已上传自定义图标</span>`;
+      } else {
+        box.innerHTML = `<span class="icon-meta">未上传图标，使用默认图标</span>`;
+      }
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  async function uploadBrandIcon(file) {
+    if (!file) return;
+    const ext = (file.name.split(".").pop() || "png").toLowerCase();
+    if (!["png", "jpg", "jpeg", "webp"].includes(ext)) {
+      toast("只支持 PNG / JPG / WebP", true);
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast("图标不能超过 5MB", true);
+      return;
+    }
+    try {
+      await fetch(`/api/admin/apks`, { method: "HEAD" }).catch(() => {});
+      const res = await fetch(`/api/admin/branding/icon?ext=${encodeURIComponent(ext)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/octet-stream" },
+        body: file,
+        credentials: "same-origin",
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || j.ok === false) throw new Error(j.message || `上传失败 (${res.status})`);
+      toast("图标已上传");
+      loadBranding();
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  async function buildWithBranding() {
+    const appName = ($("brandAppName").value || "").trim();
+    const packageName = ($("brandPackage").value || "").trim();
+
+    if (appName && appName.length > 12) {
+      toast("应用名称建议不超过 12 个字", true);
+      return;
+    }
+    if (packageName && !/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(packageName)) {
+      toast("包名格式不正确，应形如 com.example.app", true);
+      return;
+    }
+
+    const desc = [
+      appName ? `名称「${appName}」` : "默认名称",
+      packageName ? `包名 ${packageName}` : "默认包名",
+    ].join("，");
+
+    // 询问是否带上预置注册信息
+    const enrollOn = $("enrollStatus")?.classList.contains("enroll-on");
+    let withEnroll = false;
+    if (enrollOn) {
+      // 服务器地址必须已填写，否则编译出的 APK 连不上
+      const enrollServer = ($("enrollServer").value || "").trim();
+      if (!enrollServer) {
+        toast("请先在「预置注册」里填写服务器地址，再编译", true);
+        $("enrollServer").focus();
+        return;
+      }
+
+      withEnroll = confirm(
+        `用以下配置编译被监控端？\n\n${desc}\n\n` +
+          `服务器地址：${enrollServer}\n\n` +
+          `点「确定」= 把注册信息写进 APK（装完自动注册）\n` +
+          `点「取消」= 不带注册信息（设备需手动填配对码）`,
+      );
+    } else {
+      if (!confirm(`用以下配置编译被监控端？\n\n${desc}\n\n编译约 10 秒～3 分钟。`)) return;
+    }
+
+    if (buildingModule) {
+      toast("已有构建在进行中", true);
+      return;
+    }
+    buildingModule = "device";
+    setBuildButtons(false);
+
+    const box = $("buildProgress");
+    box.classList.remove("hidden");
+    box.className = "build-progress running";
+    box.textContent = "正在启动构建…";
+
+    try {
+      await api("/api/admin/build", {
+        method: "POST",
+        body: {
+          module: "device",
+          appName: appName || null,
+          packageName: packageName || null,
+          enroll: withEnroll,
+        },
+      });
+      pollBuild();
+    } catch (e) {
+      buildingModule = null;
+      setBuildButtons(true);
+      box.className = "build-progress fail";
+      box.textContent = e.message;
+    }
+  }
+
+  // ---------- 预置注册 ----------
+  async function loadEnrollment() {
+    try {
+      const data = await api("/api/admin/enrollment");
+      const e = data.enrollment || {};
+      $("enrollKey").value = e.groupKey || "";
+      $("enrollServer").value = e.serverUrl || "";
+      $("enrollMax").value = e.maxDevices || 0;
+
+      // 分组下拉
+      const sel = $("enrollGroup");
+      sel.innerHTML = ['<option value="">不分组</option>']
+        .concat(groups.map((g) => `<option value="${esc(g.id)}" ${e.groupId === g.id ? "selected" : ""}>${esc(g.name)}</option>`))
+        .join("");
+
+      const box = $("enrollStatus");
+      if (e.enabled) {
+        box.className = "enroll-status enroll-on";
+        box.innerHTML = `✅ 已启用 · 注册上限 ${e.maxDevices > 0 ? e.maxDevices + " 台" : "不限"}<br>
+          <span style="font-size:12px">编译被监控端时会自动带上注册信息</span>`;
+      } else {
+        box.className = "enroll-status enroll-off";
+        box.innerHTML = "未启用 · 设备仍需手动填配对码";
+      }
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  async function saveEnrollment(enable) {
+    const groupKey = ($("enrollKey").value || "").trim();
+    if (enable && groupKey.length < 16) {
+      toast("组密钥至少 16 位", true);
+      return;
+    }
+    if (groupKey && /\s/.test(groupKey)) {
+      toast("组密钥不能包含空格", true);
+      return;
+    }
+    const maxDevices = parseInt($("enrollMax").value, 10) || 0;
+    const serverUrl = ($("enrollServer").value || "").trim();
+    const groupId = $("enrollGroup").value || null;
+
+    try {
+      await api("/api/admin/enrollment", {
+        method: "POST",
+        body: { enabled: enable, groupKey, maxDevices, serverUrl, groupId },
+      });
+      toast(enable ? "已启用预置注册" : "已停用");
+      loadEnrollment();
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  // ---------- 分组 ----------
+  let groups = [];
+  /** 当前筛选的分组：null=全部，"none"=未分组，其他=组 ID */
+  let currentGroupFilter = null;
+
+  async function loadGroups() {
+    try {
+      const data = await api("/api/admin/groups");
+      groups = data.groups || [];
+      renderGroupBar();
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  function renderGroupBar() {
+    const bar = $("groupBar");
+    const total = groups.reduce((n, g) => n + g.deviceCount, 0);
+
+    const chip = (id, label, count, color, active) => `
+      <span class="group-chip ${active ? "active" : ""}" data-group="${esc(id)}">
+        ${color ? `<span class="group-dot" style="background:${esc(color)}"></span>` : ""}
+        ${esc(label)}
+        <span class="group-count">${count}</span>
+      </span>`;
+
+    bar.innerHTML = [
+      chip("", "全部", total, null, currentGroupFilter === null),
+      chip("none", "未分组", 0, null, currentGroupFilter === "none"),
+      ...groups.map((g) => chip(g.id, g.name, g.deviceCount, g.color, currentGroupFilter === g.id)),
+    ].join("");
+
+    bar.querySelectorAll("[data-group]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const v = el.dataset.group;
+        currentGroupFilter = v === "" ? null : v;
+        renderGroupBar();
+        loadDevices();
+      });
+    });
+  }
+
+  async function openGroupDialog() {
+    const name = prompt("分组名称（如：一号仓库、A 部门）");
+    if (!name || !name.trim()) return;
+
+    try {
+      await api("/api/admin/groups", { method: "POST", body: { name: name.trim() } });
+      toast("分组已创建");
+      await loadGroups();
+      loadDevices();
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  /** 渲染单台设备的分组下拉。 */
+  function groupSelectHtml(device) {
+    const opts = ['<option value="">未分组</option>']
+      .concat(
+        groups.map(
+          (g) =>
+            `<option value="${esc(g.id)}" ${device.group?.id === g.id ? "selected" : ""}>${esc(g.name)}</option>`,
+        ),
+      )
+      .join("");
+    return `<select class="group-select" data-assign="${esc(device.id)}">${opts}</select>`;
+  }
+
+  async function assignGroup(deviceId, groupId) {
+    try {
+      await api(`/api/admin/devices/${deviceId}/group`, {
+        method: "POST",
+        body: { groupId: groupId || null },
+      });
+      toast("已更新分组");
+      await loadGroups();
+      loadDevices();
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  // ---------- 构建环境 ----------
+  let envPollTimer = null;
+
+  async function loadBuildEnv() {
+    try {
+      const data = await api("/api/admin/build/setup");
+      const box = $("envStatus");
+      const st = data.status || {};
+
+      if (data.ready) {
+        box.className = "enroll-status enroll-on";
+        box.innerHTML = "✅ 构建环境已就绪，可以编译 APK";
+        return;
+      }
+
+      if (st.running) {
+        box.className = "enroll-status enroll-off";
+        box.innerHTML = `⏳ ${esc(st.message || "正在安装…")}`;
+        $("envProgress").classList.remove("hidden");
+        $("envProgress").className = "build-progress running";
+        $("envProgress").textContent = st.message || "";
+        scheduleEnvPoll();
+        return;
+      }
+
+      if (st.error) {
+        box.className = "enroll-status enroll-off";
+        box.innerHTML = `❌ ${esc(st.error)}`;
+      } else if (!data.hasBundled) {
+        box.className = "enroll-status enroll-off";
+        box.innerHTML = "⚠ 当前程序未内置构建环境，无法在此编译 APK";
+      } else {
+        box.className = "enroll-status enroll-off";
+        box.innerHTML = "未安装 · 点击下方按钮释放内置资源（约 2.3GB）";
+      }
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  function scheduleEnvPoll() {
+    if (envPollTimer) clearTimeout(envPollTimer);
+    envPollTimer = setTimeout(async () => {
+      await loadBuildEnv();
+      // 装完后刷新编译区状态
+      const data = await api("/api/admin/build/setup").catch(() => null);
+      if (data?.ready) {
+        $("envProgress").classList.add("hidden");
+        loadApks();
+      }
+    }, 3000);
+  }
+
+  async function startEnvInstall() {
+    if (!confirm("释放构建环境到磁盘？\n\n约 2.3GB，需要几分钟，请勿关闭程序。")) return;
+
+    const box = $("envProgress");
+    box.classList.remove("hidden");
+    box.className = "build-progress running";
+    box.textContent = "正在启动…";
+
+    try {
+      await api("/api/admin/build/setup", { method: "POST", body: {} });
+      toast("已开始释放，请等待");
+      scheduleEnvPoll();
+    } catch (e) {
+      box.className = "build-progress fail";
+      box.textContent = e.message;
+      toast(e.message, true);
+    }
+  }
+
+  async function copyText(text, okMsg) {    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // http 下 clipboard API 不可用，回退到 execCommand
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+      toast(okMsg || "已复制");
+    } catch (e) {
+      toast("复制失败，请手动选择文本", true);
+    }
+  }
+
+  async function batchPairingCodes() {
+    const raw = prompt("生成多少个配对码？（1–50）", "10");
+    if (raw === null) return;
+    const count = Math.max(1, Math.min(50, parseInt(raw, 10) || 10));
+    try {
+      const data = await api("/api/admin/pairing/batch", { method: "POST", body: { count } });
+      const codes = data.codes || [];
+      const box = $("batchCodes");
+      box.classList.remove("hidden");
+      box.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:600">已生成 ${codes.length} 个配对码</span>
+          <button class="btn btn-sm btn-ghost" id="copyCodes">全部复制</button>
+          <span style="font-size:12px;color:var(--muted)">30 分钟内有效，每码只能用一次</span>
+        </div>
+        <div class="code-grid">${codes.map((c) => `<div class="code-item">${esc(c)}</div>`).join("")}</div>
+      `;
+      $("copyCodes").addEventListener("click", () => copyText(codes.join("\n"), "已复制全部配对码"));
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+  // ---------- 运行配置 ----------
+  async function loadConfig() {
+    try {
+      const data = await api("/api/admin/config");
+      const cfg = data.config || {};
+      $("cfgMode").value = cfg.backgroundMode || "hybrid";
+      $("cfgInterval").value = cfg.reportIntervalSec || 300;
+      $("cfgOperationUrl").value = cfg.operationUrl || "";
+      $("cfgAdminPassword").value = cfg.adminPassword || "";
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  async function saveConfig() {
+    const backgroundMode = $("cfgMode").value;
+    const reportIntervalSec = parseInt($("cfgInterval").value, 10) || 300;
+    if (reportIntervalSec < 30 || reportIntervalSec > 86400) {
+      toast("上报间隔需在 30–86400 秒之间", true);
+      return;
+    }
+
+    const operationUrl = ($("cfgOperationUrl").value || "").trim();
+    if (operationUrl && !/^https?:\/\/\S+$/i.test(operationUrl)) {
+      toast("操作页地址需以 http:// 或 https:// 开头", true);
+      return;
+    }
+
+    const adminPassword = $("cfgAdminPassword").value || "";
+
+    try {
+      await api("/api/admin/config", {
+        method: "POST",
+        body: { backgroundMode, reportIntervalSec, operationUrl, adminPassword },
+      });
+      $("cfgNote").textContent = "已保存，在线设备下次上报时会同步新配置";
+      toast("配置已保存");
+      loadDevices();
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  /** 渲染某台设备的权限状态。 */
+  function permissionsHtml(d) {
+    const p = d.permissions;
+    if (!p || !Array.isArray(p.items)) {
+      return `<div class="perm-box perm-bad">还没有上报权限状态，设备下次上报后显示</div>`;
+    }
+
+    const missing = p.items.filter((x) => !x.granted);
+    const cls = missing.length === 0 ? "perm-ok" : "perm-bad";
+    const summary = missing.length === 0
+      ? "所有权限已授予"
+      : `缺少 ${missing.length} 项：${missing.map((x) => x.label).join("、")}`;
+
+    const tags = p.items
+      .map((x) => {
+        const c = ["perm-tag"];
+        if (!x.granted) c.push("miss");
+        if (x.special) c.push("special");
+        const mark = x.granted ? "✓" : "✕";
+        return `<span class="${c.join(" ")}" title="${esc(x.reason || "")}">${mark} ${esc(x.label)}</span>`;
+      })
+      .join("");
+
+    const needRuntime = missing.some((x) => !x.special);
+    const needSpecial = missing.some((x) => x.special);
+    const actions = missing.length
+      ? `<div class="perm-actions">
+           <button class="btn btn-sm" data-act="reqperm" ${!d.online ? "disabled" : ""}>请求权限</button>
+           ${needSpecial ? `<span style="font-size:12px;color:var(--muted);align-self:center">虚线框的权限需在设备上手动开启</span>` : ""}
+         </div>`
+      : "";
+
+    return `<div class="perm-box ${cls}">
+      <div>${summary}</div>
+      <div class="perm-list">${tags}</div>
+      ${actions}
+    </div>`;
+  }
+  // ---------- 日志 ----------
+  const EVENT_LABELS = {
+    online: "上线",
+    offline: "离线",
+    pair: "配对",
+    unpair: "解绑",
+    location: "定位",
+    telemetry: "状态",
+    photo: "照片",
+    command: "指令",
+    command_result: "结果",
+    log: "日志",
+  };
+
+  async function loadLogs(deviceId, container, filter) {
+    container.innerHTML = '<div style="padding:10px 0;color:var(--muted);font-size:13px">正在加载日志…</div>';
+    try {
+      const qs = new URLSearchParams({ limit: "200" });
+      if (filter) qs.set("event", filter);
+      const data = await api(`/api/admin/devices/${deviceId}/logs?${qs}`);
+      const logs = data.logs || [];
+
+      const options = ['<option value="">全部事件</option>']
+        .concat(Object.keys(EVENT_LABELS).map(
+          (k) => `<option value="${k}"${filter === k ? " selected" : ""}>${EVENT_LABELS[k]}</option>`,
+        ))
+        .join("");
+
+      const rows = logs.length
+        ? logs.map((l) => {
+            const d = new Date(l.ts);
+            const p = (n) => String(n).padStart(2, "0");
+            const time = `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+            const detail = l.detail?.summary
+              ? `<span style="color:var(--muted)"> · ${esc(l.detail.summary)}</span>`
+              : "";
+            return `<div class="log-row ${l.level || ""}">
+              <span class="lt">${time}</span>
+              <span class="le">${esc(EVENT_LABELS[l.event] || l.event)}</span>
+              <span class="lm">${esc(l.message)}${detail}</span>
+            </div>`;
+          }).join("")
+        : '<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center">暂无日志</div>';
+
+      container.innerHTML = `
+        <div class="divider"></div>
+        <div class="logs-toolbar">
+          <span style="font-size:13px;font-weight:600">设备日志</span>
+          <select data-log-filter>${options}</select>
+          <button class="btn btn-sm btn-ghost" data-log-reload>刷新</button>
+          <button class="btn btn-sm btn-danger" data-log-clear>清空</button>
+          <span style="font-size:12px;color:var(--muted);margin-left:auto">共 ${logs.length} 条</span>
+        </div>
+        <div class="log-list">${rows}</div>
+      `;
+
+      const sel = container.querySelector("[data-log-filter]");
+      sel.addEventListener("change", () => loadLogs(deviceId, container, sel.value || null));
+
+      container.querySelector("[data-log-reload]").addEventListener("click", () =>
+        loadLogs(deviceId, container, sel.value || null));
+
+      container.querySelector("[data-log-clear]").addEventListener("click", async () => {
+        if (!confirm("清空这台设备的全部日志？此操作不可恢复。")) return;
+        try {
+          await api(`/api/admin/devices/${deviceId}/logs`, { method: "DELETE" });
+          toast("日志已清空");
+          await loadLogs(deviceId, container, null);
+        } catch (e) { toast(e.message, true); }
+      });
+    } catch (e) {
+      container.innerHTML = `<div style="padding:10px 0;color:var(--err);font-size:13px">${esc(e.message)}</div>`;
+    }
+  }
+
+  // ---------- 事件绑定 ----------
+  $("authBtn").addEventListener("click", submitAuth);
+  ["u", "p", "p2"].forEach((id) => {
+    const el = $(id);
+    if (el) el.addEventListener("keydown", (e) => { if (e.key === "Enter") submitAuth(); });
+  });
+
+  $("refreshBtn").addEventListener("click", async () => {
+    await loadDevices();
+    await loadApks();
+    toast("已刷新");
+  });
+
+  // 安装包上传与批量配对码
+  $("apkFile").addEventListener("change", (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) uploadApk(file);
+    e.target.value = ""; // 允许重复选同一个文件
+  });
+  $("apkPairBtn").addEventListener("click", batchPairingCodes);
+  $("copyInstall").addEventListener("click", () => copyText($("installUrl").textContent, "安装页地址已复制"));
+
+  // 服务端构建：先确认再编译，避免误触占用服务器
+  $("buildDevice").addEventListener("click", () => askBuild("device"));
+  $("buildMonitor").addEventListener("click", () => askBuild("monitor"));
+
+  // 标签切换
+  document.querySelector(".tabs").addEventListener("click", (e) => {
+    const btn = e.target.closest(".tab");
+    if (btn) switchTab(btn.dataset.tab);
+  });
+
+  // 运行配置
+  $("cfgSave").addEventListener("click", saveConfig);
+
+  // 品牌定制
+  $("brandIcon").addEventListener("change", (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) uploadBrandIcon(file);
+    e.target.value = "";
+  });
+  $("brandIconClear").addEventListener("click", async () => {
+    if (!confirm("清除自定义图标？下次编译将使用默认图标。")) return;
+    try {
+      await api("/api/admin/branding/icon", { method: "DELETE" });
+      toast("已清除");
+      loadBranding();
+    } catch (e) {
+      toast(e.message, true);
+    }
+  });
+  $("buildBranded").addEventListener("click", buildWithBranding);
+
+  // 预置注册
+  $("enrollGen").addEventListener("click", async () => {
+    try {
+      const r = await api("/api/admin/enrollment/rotate", { method: "POST", body: {} });
+      $("enrollKey").value = r.groupKey || "";
+      toast("已生成组密钥，点「保存并启用」生效");
+    } catch (e) {
+      toast(e.message, true);
+    }
+  });
+  $("enrollSave").addEventListener("click", () => saveEnrollment(true));
+
+  // 构建环境
+  $("envInstall").addEventListener("click", startEnvInstall);
+  $("envRefresh").addEventListener("click", loadBuildEnv);
+  $("enrollDisable").addEventListener("click", () => saveEnrollment(false));
+
+  $("logoutBtn").addEventListener("click", async () => {
+    try { await api("/api/admin/logout", { method: "POST", body: {} }); } catch { /* 忽略 */ }
+    location.reload();
+  });
+
+  // 分组
+  $("groupAdd").addEventListener("click", openGroupDialog);
+
+  $("deviceList").addEventListener("change", (e) => {
+    const sel = e.target.closest("[data-assign]");
+    if (!sel) return;
+    assignGroup(sel.dataset.assign, sel.value);
+  });
+
+  $("deviceList").addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-act]");
+    if (!btn) return;
+    const card = btn.closest(".dev");
+    const id = card.dataset.id;
+    const act = btn.dataset.act;
+    const photoBox = card.querySelector("[data-photos]");
+    const logBox = card.querySelector("[data-logs]");
+
+    if (act === "locate") await runCommand(btn, id, "/locate", {}, "已请求定位");
+    else if (act === "telemetry") {
+      const r = await runCommand(btn, id, "/telemetry", {}, "已刷新运行状态");
+      if (r) await loadDevices();
+    } else if (act === "capture-back") {
+      const r = await runCommand(btn, id, "/capture", { lens: "back" }, "已收到后置照片");
+      if (r) await loadPhotos(id, photoBox);
+    } else if (act === "capture-front") {
+      const r = await runCommand(btn, id, "/capture", { lens: "front" }, "已收到前置照片");
+      if (r) await loadPhotos(id, photoBox);
+    } else if (act === "sync-album") {
+      const r = await runCommand(btn, id, "/sync-album", { limit: 5 }, "相册已同步");
+      if (r) await loadPhotos(id, photoBox);
+    } else if (act === "photos") {
+      await loadPhotos(id, photoBox);
+    } else if (act === "openadmin") {
+      // 让设备打开管理页。设备端会在收到指令后切到管理页并要求输入口令。
+      if (!confirm("让该设备的用户打开管理页？\n\n设备会切到「管理验证」页面，需要在该设备上输入口令。")) return;
+      await runCommand(btn, id, "/open-admin", {}, "已发送，设备切到管理页后需要输入口令");
+    } else if (act === "clipboard") {
+      const clipBox = card.querySelector("[data-clip]");
+      await loadClipboard(id, clipBox, btn);
+    } else if (act === "logs") {
+      await loadLogs(id, logBox, null);
+    } else if (act === "reqperm") {
+      // 打开勾选弹窗，让管理员选要请求哪些权限
+      const dev = devices.find((x) => x.id === id);
+      if (dev) await openPermissionModal(dev);
+    } else if (act === "delete") {
+      if (!confirm("确定解绑这台设备？解绑后它不会再上报，且需要重新配对。")) return;
+      try {
+        await api(`/api/admin/devices/${id}`, { method: "DELETE" });
+        toast("已解绑");
+        await loadDevices();
+      } catch (err) { toast(err.message, true); }
+    }
+  });
+
+  // 每 30 秒自动刷新在线状态，页面隐藏时跳过以省流量
+  setInterval(() => {
+    if (document.visibilityState === "visible" && !$("appView").classList.contains("hidden")) {
+      loadDevices();
+    }
+  }, 30000);
+
+  checkStatus();
+})();
+</script>
+</body>
+</html>

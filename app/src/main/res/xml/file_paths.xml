@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 相机拍照的临时文件放在 cache/photos，通过 FileProvider 共享给相机应用 -->
+    <cache-path
+        name="photos"
+        path="photos/" />
+    <files-path
+        name="saved_photos"
+        path="saved_photos/" />
+</paths>
