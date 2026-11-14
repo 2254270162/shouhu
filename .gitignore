@@ -71,3 +71,6 @@ temp/
 
 # ===== 依赖（部署时 npm install 安装）=====
 node_modules/
+
+# 调试残留
+.dsh-probe.txt
